@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header><h1>QuizMaster2000</h1>
+            <h6>Be a master!<br>Don't make a disaster!</h4>
+                <div class=question-picture-right><img src="assets/question_mark.jpg" height="100"></div>
+                <div class=question-picture-left><img src="assets/question_mark.jpg" height="100"></div>
+        </header>
+        <div class="choose-box">
+        <label for="category">Number of Questions</label>
+        <input type="number" id="select-number" class="select-number"></input>
+        <label for="category">Category</label>
+        <select name="category" id="select-category" class="select-category"></select>
+        <label for="category">Difficulty</label>
+        <select name="difficulty" id="select-difficulty" class="select-difficulty"></select>
+        <button type="button" id="begin-btn">Start Quiz Now!</button>
+        <p id="question-warning"></p>
+        </div>
+        <div class="quiz-header">
+            <div class="quiz-body">
+                <!-- <div id="timer">10</div> -->
+                <div class="quiz-score">
+                <label>Current score</label>
+                <span id="correct-score"></span>
+                <label>amount of questions</label>
+                <span id="total-questions"></span>
+            </div>
+                <h2 class="quiz-question" id="question"></h2>
+                <h3 class="quiz-options" id="options"></h3>
+                <button type="button" id="check-answer">Check Answer</button>
+                <button type="button" id="play-again">Restart</button>
+                <div id="result"></div>
+            </div>
+            <div class="quiz-footer">
+            </div>
+        </div>
+        <footer>Questions provided from <a href="https://opentdb.com/">OpenTrivia</a></footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
