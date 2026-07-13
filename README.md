@@ -7,6 +7,10 @@
 
 Interactive trivia quiz application built with vanilla JavaScript.
 
+## Screenshot
+
+![TriviaQuiz Screenshot](assets/trivia_quiz.jpeg)
+
 ## Features
 
 Dynamic trivia questions loaded from an external API. Multiple choice answers with instant visual feedback. Score tracking across the full session. Configurable number of questions, category and difficulty. Responsive layout for mobile and desktop. Restart functionality through a result modal. Loading and error states for failed requests. Modular JavaScript structure split into state, UI and API layers.
@@ -43,3 +47,5 @@ Select the number of questions, an optional category and an optional difficulty.
 ## Credits
 
 Questions provided by [Open Trivia DB](https://opentdb.com/).
+
+Assets provided by [Magnific](https://www.magnific.com/).
