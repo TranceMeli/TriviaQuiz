@@ -1,5 +1,6 @@
 import { computed, ref, shallowRef } from 'vue'
-import { fetchCategories, fetchQuestions, TriviaApiError } from '../api'
+import { fetchCategories, fetchQuestions, requestToken, resetToken, TriviaApiError } from '../api'
+import { RATE_LIMIT_PAUSE_MS } from '../constants'
 import type { CategoriesStatus, Category, MissedQuestion, Phase, Question, QuizSettings } from '../types'
 import { loadSettings, saveSettings } from '../utils/storage'
 
@@ -13,6 +14,20 @@ export function errorMessage(error: unknown): string {
     }
   }
   return 'The questions could not be loaded. Check your connection and try again.'
+}
+
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms)
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer)
+        reject(new DOMException('Aborted', 'AbortError'))
+      },
+      { once: true },
+    )
+  })
 }
 
 /** All quiz state and rules. Components only render it and forward user intent. */
@@ -36,6 +51,44 @@ export function useQuiz() {
   const selectionMissing = ref(false)
 
   let pendingRequest: AbortController | null = null
+  /** Session token so replayed quizzes do not repeat questions. Optional: the quiz works without it. */
+  let token: string | null = null
+
+  async function ensureToken(signal: AbortSignal): Promise<string | null> {
+    if (token) return token
+    try {
+      token = await requestToken(signal)
+    } catch (e) {
+      if (signal.aborted) throw e
+      token = null // a missing token only means possible repeats – never block the quiz on it
+    }
+    return token
+  }
+
+  async function loadQuestions(next: QuizSettings, signal: AbortSignal): Promise<Question[]> {
+    const used = await ensureToken(signal)
+    try {
+      return await fetchQuestions(next, signal, used ?? undefined)
+    } catch (e) {
+      const tokenProblem = e instanceof TriviaApiError && (e.kind === 'token-invalid' || e.kind === 'token-exhausted')
+      if (!tokenProblem || !used) throw e
+
+      if (e.kind === 'token-exhausted') {
+        try {
+          await resetToken(used, signal)
+        } catch (resetError) {
+          if (signal.aborted) throw resetError
+          token = null
+        }
+      } else {
+        token = null
+      }
+      // The questions endpoint is rate limited, so the retry has to wait.
+      await pause(RATE_LIMIT_PAUSE_MS, signal)
+      const fresh = await ensureToken(signal)
+      return fetchQuestions(next, signal, fresh ?? undefined)
+    }
+  }
 
   const total = computed(() => questions.value.length)
   const current = computed<Question | null>(() => questions.value[index.value] ?? null)
@@ -60,7 +113,7 @@ export function useQuiz() {
     error.value = null
     phase.value = 'loading'
     try {
-      const loaded = await fetchQuestions(next, request.signal)
+      const loaded = await loadQuestions(next, request.signal)
       if (request.signal.aborted) return
       settings.value = next
       saveSettings(next)

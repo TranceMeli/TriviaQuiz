@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TriviaApiError } from '../api'
+import { RATE_LIMIT_PAUSE_MS } from '../constants'
 import type { Question } from '../types'
 import { useQuiz } from './useQuiz'
 
@@ -7,6 +8,8 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   fetchQuestions: vi.fn(),
   fetchCategories: vi.fn(),
+  requestToken: vi.fn(),
+  resetToken: vi.fn(),
 }))
 
 const api = await import('../api')
@@ -19,6 +22,8 @@ const settings = { amount: 2, category: null, difficulty: null }
 
 beforeEach(() => {
   vi.mocked(api.fetchQuestions).mockReset()
+  vi.mocked(api.requestToken).mockReset().mockResolvedValue('tok')
+  vi.mocked(api.resetToken).mockReset().mockResolvedValue(undefined)
   // Keep tests independent of any real browser storage.
   const store = new Map<string, string>()
   vi.stubGlobal('localStorage', {
@@ -124,7 +129,7 @@ describe('useQuiz', () => {
     quiz.check()
     await quiz.playAgain()
 
-    expect(vi.mocked(api.fetchQuestions)).toHaveBeenLastCalledWith(custom, expect.anything())
+    expect(vi.mocked(api.fetchQuestions)).toHaveBeenLastCalledWith(custom, expect.anything(), 'tok')
     expect(quiz.settings.value).toEqual(custom)
     expect(quiz.score.value).toBe(0)
     expect(quiz.missed.value).toEqual([])
@@ -141,6 +146,115 @@ describe('useQuiz', () => {
     await quiz.start({ amount: 40, category: 1, difficulty: 'easy' })
 
     expect(quiz.settings.value).toEqual(settings)
+  })
+
+  describe('session token', () => {
+    it('requests one token and reuses it for replayed quizzes', async () => {
+      vi.mocked(api.fetchQuestions).mockResolvedValue(questions)
+      const quiz = useQuiz()
+
+      await quiz.start(settings)
+      await quiz.playAgain()
+
+      expect(api.requestToken).toHaveBeenCalledTimes(1)
+      expect(api.fetchQuestions).toHaveBeenNthCalledWith(1, settings, expect.anything(), 'tok')
+      expect(api.fetchQuestions).toHaveBeenNthCalledWith(2, settings, expect.anything(), 'tok')
+    })
+
+    it('still starts the quiz when no token can be obtained', async () => {
+      vi.mocked(api.requestToken).mockRejectedValue(new TriviaApiError('network', 'x'))
+      vi.mocked(api.fetchQuestions).mockResolvedValue(questions)
+      const quiz = useQuiz()
+
+      await quiz.start(settings)
+
+      expect(quiz.phase.value).toBe('playing')
+      expect(api.fetchQuestions).toHaveBeenCalledWith(settings, expect.anything(), undefined)
+    })
+
+    it('resets an exhausted token and retries after the rate-limit pause', async () => {
+      vi.useFakeTimers()
+      try {
+        vi.mocked(api.fetchQuestions)
+          .mockRejectedValueOnce(new TriviaApiError('token-exhausted', 'x'))
+          .mockResolvedValueOnce(questions)
+        const quiz = useQuiz()
+
+        const started = quiz.start(settings)
+        await vi.advanceTimersByTimeAsync(0)
+        expect(api.resetToken).toHaveBeenCalledWith('tok', expect.anything())
+        expect(api.fetchQuestions).toHaveBeenCalledTimes(1) // must not retry before the pause
+
+        await vi.advanceTimersByTimeAsync(RATE_LIMIT_PAUSE_MS)
+        await started
+
+        expect(api.fetchQuestions).toHaveBeenCalledTimes(2)
+        expect(quiz.phase.value).toBe('playing')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('requests a fresh token when the old one is invalid', async () => {
+      vi.useFakeTimers()
+      try {
+        vi.mocked(api.requestToken).mockResolvedValueOnce('old').mockResolvedValueOnce('new')
+        vi.mocked(api.fetchQuestions)
+          .mockRejectedValueOnce(new TriviaApiError('token-invalid', 'x'))
+          .mockResolvedValueOnce(questions)
+        const quiz = useQuiz()
+
+        const started = quiz.start(settings)
+        await vi.advanceTimersByTimeAsync(RATE_LIMIT_PAUSE_MS)
+        await started
+
+        expect(api.resetToken).not.toHaveBeenCalled()
+        expect(api.fetchQuestions).toHaveBeenLastCalledWith(settings, expect.anything(), 'new')
+        expect(quiz.phase.value).toBe('playing')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('gives up after one retry instead of looping', async () => {
+      vi.useFakeTimers()
+      try {
+        vi.mocked(api.fetchQuestions).mockImplementation(async () => {
+          throw new TriviaApiError('token-exhausted', 'x')
+        })
+        const quiz = useQuiz()
+
+        const started = quiz.start(settings)
+        await vi.advanceTimersByTimeAsync(RATE_LIMIT_PAUSE_MS)
+        await started
+
+        expect(api.fetchQuestions).toHaveBeenCalledTimes(2)
+        expect(quiz.phase.value).toBe('setup')
+        expect(quiz.error.value).not.toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('cancels the pause when the player leaves', async () => {
+      vi.useFakeTimers()
+      try {
+        vi.mocked(api.fetchQuestions).mockRejectedValue(new TriviaApiError('token-exhausted', 'x'))
+        const quiz = useQuiz()
+
+        const started = quiz.start(settings)
+        await vi.advanceTimersByTimeAsync(0)
+        quiz.backToSetup()
+        await vi.advanceTimersByTimeAsync(RATE_LIMIT_PAUSE_MS)
+        await started
+
+        expect(api.fetchQuestions).toHaveBeenCalledTimes(1)
+        expect(quiz.phase.value).toBe('setup')
+        expect(quiz.error.value).toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 
   it('resets the score for a new game', async () => {

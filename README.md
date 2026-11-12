@@ -21,6 +21,7 @@ Interactive trivia quiz built with Vue 3, TypeScript and Vite.
 - Settings card with quick picks (Quick 5 / Standard 10 / Long 25), custom amount, category and difficulty, inline validation, and your last settings remembered in the browser
 - Instant, non-colour-only feedback after each answer (icon + text + colour)
 - Progress bar, score tracking and a result dialog that reviews every missed question, with "Play again with same settings" and "Change settings"
+- Replayed quizzes avoid repeated questions (Open Trivia DB session token, with a safe fallback if it is unavailable)
 - Loading, error and empty states for every request (including a retry for categories)
 - Fully keyboard-operable: `1`–`4` pick an answer, `Enter` checks / continues
 - Accessible by design: labelled form controls, radio-group answers, live-region feedback, visible focus, WCAG AA contrast, `prefers-reduced-motion` support
@@ -53,7 +54,7 @@ src/
   main.ts                     App bootstrap
   App.vue                     Page layout, switches between setup and quiz
   types.ts, constants.ts      Shared types and limits
-  api.ts                      Open Trivia DB client (fetch, error mapping, decoding)
+  api.ts                      Open Trivia DB client (fetch, session token, error mapping, decoding)
   composables/useQuiz.ts      All quiz state and rules (framework-light, unit-tested)
   components/
     AppHeader.vue             Title banner

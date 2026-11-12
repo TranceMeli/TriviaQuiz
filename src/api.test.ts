@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildQuestionsUrl, decodeEntities, fetchQuestions, toQuestion, TriviaApiError } from './api'
+import {
+  buildQuestionsUrl,
+  decodeEntities,
+  fetchQuestions,
+  requestToken,
+  resetToken,
+  toQuestion,
+  TriviaApiError,
+} from './api'
 import { shuffle } from './utils/shuffle'
 
 const enc = encodeURIComponent
@@ -45,6 +53,12 @@ describe('buildQuestionsUrl', () => {
     expect(url.searchParams.has('difficulty')).toBe(false)
   })
 
+  it('adds the session token only when there is one', () => {
+    const settings = { amount: 5, category: null, difficulty: null }
+    expect(new URL(buildQuestionsUrl(settings, 'abc')).searchParams.get('token')).toBe('abc')
+    expect(new URL(buildQuestionsUrl(settings)).searchParams.has('token')).toBe(false)
+  })
+
   it('includes category and difficulty when set', () => {
     const url = new URL(buildQuestionsUrl({ amount: 5, category: 9, difficulty: 'hard' }))
     expect(url.searchParams.get('category')).toBe('9')
@@ -81,6 +95,8 @@ describe('fetchQuestions', () => {
     [1, 'no-results'],
     [5, 'rate-limit'],
     [2, 'invalid'],
+    [3, 'token-invalid'],
+    [4, 'token-exhausted'],
   ])('maps response_code %i to "%s"', async (code, kind) => {
     mockFetch({ response_code: code, results: [] })
     await expect(fetchQuestions(settings)).rejects.toMatchObject({ kind })
@@ -96,6 +112,25 @@ describe('fetchQuestions', () => {
   it('maps a failed request to network', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
     await expect(fetchQuestions(settings)).rejects.toMatchObject({ kind: 'network' })
+  })
+})
+
+describe('session token', () => {
+  it('requests a token', async () => {
+    mockFetch({ response_code: 0, token: 'abc' })
+    await expect(requestToken()).resolves.toBe('abc')
+  })
+
+  it('rejects when the API sends no token', async () => {
+    mockFetch({ response_code: 0 })
+    await expect(requestToken()).rejects.toBeInstanceOf(TriviaApiError)
+  })
+
+  it('resets a token and reports failure', async () => {
+    mockFetch({ response_code: 0, token: 'abc' })
+    await expect(resetToken('abc')).resolves.toBeUndefined()
+    mockFetch({ response_code: 3 })
+    await expect(resetToken('abc')).rejects.toMatchObject({ kind: 'token-invalid' })
   })
 })
 

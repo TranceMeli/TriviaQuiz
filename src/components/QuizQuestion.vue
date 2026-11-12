@@ -204,7 +204,7 @@ watch(
   display: block;
   margin-top: var(--space-2);
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 400;
 }
 
@@ -247,7 +247,7 @@ watch(
 }
 
 .option__state {
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 
@@ -296,7 +296,7 @@ watch(
 .quiz__hint {
   margin: var(--space-2) 0 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 1rem;
   text-align: center;
 }
 

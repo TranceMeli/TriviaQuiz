@@ -3,7 +3,15 @@ import { shuffle } from './utils/shuffle'
 
 const API_BASE = 'https://opentdb.com'
 
-export type ApiErrorKind = 'no-results' | 'rate-limit' | 'invalid' | 'network'
+export type ApiErrorKind =
+  | 'no-results'
+  | 'rate-limit'
+  | 'invalid'
+  | 'network'
+  /** The session token is unknown or expired. */
+  | 'token-invalid'
+  /** The session token has already returned every question for this query. */
+  | 'token-exhausted'
 
 export class TriviaApiError extends Error {
   readonly kind: ApiErrorKind
@@ -31,6 +39,11 @@ interface QuestionsResponse {
 
 interface CategoriesResponse {
   trivia_categories: Category[]
+}
+
+interface TokenResponse {
+  response_code: number
+  token?: string
 }
 
 const HTML_ENTITIES: Record<string, string> = {
@@ -69,10 +82,32 @@ export async function fetchCategories(signal?: AbortSignal): Promise<Category[]>
   }))
 }
 
-export function buildQuestionsUrl({ amount, category, difficulty }: QuizSettings): string {
+/**
+ * A session token makes the API remember which questions it already returned,
+ * so a replayed quiz does not repeat them.
+ */
+export async function requestToken(signal?: AbortSignal): Promise<string> {
+  const data = await getJson<TokenResponse>(`${API_BASE}/api_token.php?command=request`, signal)
+  if (data.response_code !== 0 || !data.token) {
+    throw new TriviaApiError('invalid', 'No session token received.')
+  }
+  return data.token
+}
+
+/** Forgets the questions already served for a token (needed once it is exhausted). */
+export async function resetToken(token: string, signal?: AbortSignal): Promise<void> {
+  const params = new URLSearchParams({ command: 'reset', token })
+  const data = await getJson<TokenResponse>(`${API_BASE}/api_token.php?${params}`, signal)
+  if (data.response_code !== 0) {
+    throw new TriviaApiError('token-invalid', 'The session token could not be reset.')
+  }
+}
+
+export function buildQuestionsUrl({ amount, category, difficulty }: QuizSettings, token?: string): string {
   const params = new URLSearchParams({ amount: String(amount), encode: 'url3986' })
   if (category !== null) params.set('category', String(category))
   if (difficulty !== null) params.set('difficulty', difficulty)
+  if (token) params.set('token', token)
   return `${API_BASE}/api.php?${params}`
 }
 
@@ -94,14 +129,22 @@ export function toQuestion(raw: RawQuestion, random?: () => number): Question {
   }
 }
 
-export async function fetchQuestions(settings: QuizSettings, signal?: AbortSignal): Promise<Question[]> {
-  const data = await getJson<QuestionsResponse>(buildQuestionsUrl(settings), signal)
+export async function fetchQuestions(
+  settings: QuizSettings,
+  signal?: AbortSignal,
+  token?: string,
+): Promise<Question[]> {
+  const data = await getJson<QuestionsResponse>(buildQuestionsUrl(settings, token), signal)
 
   switch (data.response_code) {
     case 0:
       return data.results.map((raw) => toQuestion(raw))
     case 1:
       throw new TriviaApiError('no-results', 'Not enough questions for this selection.')
+    case 3:
+      throw new TriviaApiError('token-invalid', 'The session token was not found.')
+    case 4:
+      throw new TriviaApiError('token-exhausted', 'The session token has returned all questions.')
     case 5:
       throw new TriviaApiError('rate-limit', 'Too many requests.')
     default:
