@@ -1,65 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz App</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>QuizMaster2000</h1>
-            <h6>Be a master!<br>Don't make a disaster!</h6>
-            <div class="question-picture-right"><img src="assets/question_mark.jpg" height="100" alt="Question Mark"></div>
-            <div class="question-picture-left"><img src="assets/question_mark.jpg" height="100" alt="Question Mark"></div>
-        </header>
-        
-        <div class="choose-box">
-            <div class="form-group">
-                <label for="select-number">Questions</label>
-                <input type="number" id="select-number" class="select-number" value="10" />
-            </div>
-            
-            <div class="form-group">
-                <label for="select-category">Category</label>
-                <select name="category" id="select-category" class="select-category"></select>
-            </div>
-            
-            <div class="form-group">
-                <label for="select-difficulty">Difficulty</label>
-                <select name="difficulty" id="select-difficulty" class="select-difficulty"></select>
-            </div>
-            
-            <button type="button" id="begin-btn">Start Quiz Now!</button>
-            <p id="question-warning"></p>
-        </div>
-        
-        <div class="quiz-header">
-            <div class="quiz-body">
-                <div class="quiz-score">
-                    <label>Current score</label>
-                    <span id="correct-score"></span>
-                    <label>Total questions</label>
-                    <span id="total-questions"></span>
-                </div>
-                <h2 class="quiz-question" id="question"></h2>
-                <h3 class="quiz-options" id="options"></h3>
-                
-                <button type="button" id="check-answer">Check Answer</button>
-                <div id="result"></div>
-            </div>
-        </div>
-
-        <dialog id="result-modal" class="result-modal">
-            <h2 class="modal-title">🎉 Quiz Finished!</h2>
-            <p id="final-score-text"></p>
-            <button type="button" id="modal-play-again">Play Again</button>
-        </dialog>
-
-        <footer>Questions provided by <a href="https://opentdb.com/">OpenTrivia</a></footer>
-    </div>
-    
-    <script type="module" src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="QuizMaster2000 – a trivia quiz powered by the Open Trivia Database." />
+    <link rel="icon" type="image/webp" href="/src/assets/question_mark.webp" />
+    <title>QuizMaster2000</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>

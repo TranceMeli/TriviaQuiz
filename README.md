@@ -1,48 +1,69 @@
 # TriviaQuiz
 
-![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge)
-![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge)
+![Vue 3](https://img.shields.io/badge/Vue_3-42B883?style=for-the-badge&logo=vuedotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![Open Trivia DB](https://img.shields.io/badge/Open%20Trivia%20DB-API-4CAF50?style=for-the-badge)
 
-Interactive trivia quiz application built with vanilla JavaScript.
+Interactive trivia quiz built with Vue 3, TypeScript and Vite.
 
 ## Screenshot
 
-![TriviaQuiz Screenshot](assets/trivia_quiz.jpeg)
+![Settings card](docs/screenshot-setup.jpg)
+
+![Question with feedback](docs/screenshot-quiz.jpg)
+
+![Result dialog with review](docs/screenshot-result.jpg)
 
 ## Features
 
-Dynamic trivia questions loaded from an external API. Multiple choice answers with instant visual feedback. Score tracking across the full session. Configurable number of questions, category and difficulty. Responsive layout for mobile and desktop. Restart functionality through a result modal. Loading and error states for failed requests. Modular JavaScript structure split into state, UI and API layers.
+- Dynamic trivia questions from the Open Trivia DB API (multiple choice and true/false)
+- Settings card with quick picks (Quick 5 / Standard 10 / Long 25), custom amount, category and difficulty, inline validation, and your last settings remembered in the browser
+- Instant, non-colour-only feedback after each answer (icon + text + colour)
+- Progress bar, score tracking and a result dialog that reviews every missed question, with "Play again with same settings" and "Change settings"
+- Loading, error and empty states for every request (including a retry for categories)
+- Fully keyboard-operable: `1`–`4` pick an answer, `Enter` checks / continues
+- Accessible by design: labelled form controls, radio-group answers, live-region feedback, visible focus, WCAG AA contrast, `prefers-reduced-motion` support
+- Responsive layout for mobile and desktop
 
-## Technologies
+## Getting started
 
-HTML5 for the page structure. CSS3 for styling and responsive behavior. JavaScript with ES6 Modules for the application logic. The Open Trivia DB API as the question source.
-
-## Project Structure
-
-```
-index.html      Main HTML structure
-style.css       Styling and responsive layout
-app.js          Application logic and event handling
-state.js        Central game state
-ui.js           DOM references and rendering functions
-api.js          Fetch calls to the Open Trivia DB API
-```
-
-## Installation
-
-Clone the repository.
+Requires Node.js 20+.
 
 ```bash
 git clone https://github.com/TranceMeli/TriviaQuiz.git
+cd TriviaQuiz
+npm install
+npm run dev
 ```
 
-Open the project folder and launch `index.html` in your browser.
+| Script              | Purpose                          |
+| ------------------- | -------------------------------- |
+| `npm run dev`       | Start the dev server             |
+| `npm run build`     | Type-check and build to `dist/`  |
+| `npm run preview`   | Serve the production build       |
+| `npm run typecheck` | Type-check only (`vue-tsc`)      |
+| `npm test`          | Run the unit tests (Vitest)      |
 
-## Usage
+## Project structure
 
-Select the number of questions, an optional category and an optional difficulty. Start the quiz, select an answer and confirm it. The correct answer is highlighted after each check. After the last question a result modal shows the final score, with the option to play again.
+```
+index.html                    Vite entry
+src/
+  main.ts                     App bootstrap
+  App.vue                     Page layout, switches between setup and quiz
+  types.ts, constants.ts      Shared types and limits
+  api.ts                      Open Trivia DB client (fetch, error mapping, decoding)
+  composables/useQuiz.ts      All quiz state and rules (framework-light, unit-tested)
+  components/
+    AppHeader.vue             Title banner
+    QuizSetup.vue             Settings form (number, category, difficulty)
+    QuizQuestion.vue          Question, answer options, feedback
+    ResultModal.vue           Final score dialog (native <dialog>)
+  styles/main.css             Design tokens and shared button styles
+  utils/shuffle.ts            Fisher–Yates shuffle
+  utils/storage.ts            Validated load/save of the last settings (localStorage)
+```
 
 ## Credits
 
